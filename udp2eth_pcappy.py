@@ -17,7 +17,7 @@ broadcast_mac = '\xff\xff\xff\xff\xff\xff'
 gn_ether_type = 0x8947
 
 
-def main_loop(port, ether_type, interface):
+def main_loop(port, interface, ether_type):
     ip = ''
     sock = socket.socket(socket.AF_INET,     # Internet
                          socket.SOCK_DGRAM)  # UDP
