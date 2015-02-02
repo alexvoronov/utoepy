@@ -36,6 +36,7 @@ def interface_from_name(name):
 def gotpacket(user_arg, hdr, data):
     """loop()'s callback"""
     eth_frame = dpkt.ethernet.Ethernet(data)
+    print eth_frame.data
     sock = user_arg['sock']
     sock.sendto(eth_frame.data, user_arg['address'])
 

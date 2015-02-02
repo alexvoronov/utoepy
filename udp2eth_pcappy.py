@@ -25,7 +25,7 @@ def main_loop(port, interface, ether_type):
 
     while True:
         data = sock.recv(UDP_BUFFER_SIZE)
-        print "received message:", data
+        print data
 
         #src_mac = hex(uuid.getnode())[2:]  # MAC of a default interface.
         src_mac = '\x00\x00\x00\x00\x00\x00'  # Some mac, should work fine.

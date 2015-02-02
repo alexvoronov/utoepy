@@ -24,7 +24,7 @@ def main_loop(port, interface, ether_type):
 
     while True:
         data = sock.recv(UDP_BUFFER_SIZE)
-        print "received message:", data
+        print data
 
         dst = broadcast_mac
         src = interface.get()  # MAC address
