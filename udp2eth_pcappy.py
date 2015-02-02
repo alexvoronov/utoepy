@@ -4,6 +4,8 @@ import argparse
 import socket
 import dpkt
 import pcappy
+import netifaces
+import binascii
 
 # Simple test:
 # echo "TEST" | socat - UDP4-DATAGRAM:127.0.0.1:4001
@@ -28,10 +30,12 @@ def main_loop(port, interface, ether_type):
         print data
 
         #src_mac = hex(uuid.getnode())[2:]  # MAC of a default interface.
-        src_mac = '\x00\x00\x00\x00\x00\x00'  # Some mac, should work fine.
+        #src_mac = '\x00\x00\x00\x00\x00\x00'  # Some mac, should work fine.
+        mac_str = netifaces.ifaddresses(interface.device)[netifaces.AF_LINK][0]['addr']
+        src_mac = binascii.unhexlify(mac_str.replace(':', ''))
 
-        frame = dpkt.ethernet.Ethernet(dst=broadcast_mac, src=src_mac, 
-            type=ether_type, data=data)
+        frame = dpkt.ethernet.Ethernet(dst=broadcast_mac, src=src_mac,
+                                       type=ether_type, data=data)
         interface.inject(frame.pack())
 
 
