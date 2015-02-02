@@ -6,8 +6,8 @@ The purpose of these scripts is to be a "Link Layer entity" for a [GeoNetwroking
 
 # Dependencies
 
-The scripts require [PcapPy](https://github.com/allfro/pcappy), [dpkt](https://code.google.com/p/dpkt/) and [libdnet](https://code.google.com/p/libdnet/). Install them with:
+The scripts require [PcapPy](https://github.com/allfro/pcappy), [dpkt](https://code.google.com/p/dpkt/) and [netifaces](https://pypi.python.org/pypi/netifaces). Install them with:
 
 ```
-pip install  --allow-external pcappy  --allow-unverified pcappy   pcappy  dnet  dpkt
+pip install  --allow-external pcappy  --allow-unverified pcappy   pcappy  dpkt  netifaces
 ```
