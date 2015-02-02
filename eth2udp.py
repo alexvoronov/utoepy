@@ -4,6 +4,8 @@ import argparse
 import socket
 import dpkt
 import pcappy
+import threading
+
 
 # Geonetworking: 0x8947, or 35143 in decimal.
 # See http://standards.ieee.org/develop/regauth/ethertype/eth.txt
@@ -57,4 +59,11 @@ if __name__ == "__main__":
     user_arg = {'sock': sock, 'address': args.address}
 
     # Parameters are count, callback_function, user_params_to_callback_function
-    p.loop(-1, gotpacket, user_arg)
+    # p.loop(-1, gotpacket, user_arg)  # Can't handle KeyboardInterrupt
+
+    # To handle KeyboardInterrupt (from http://stackoverflow.com/questions/14271697/ctrlc-doesnt-interrupt-call-to-shared-library-using-ctypes-in-python)
+    t = threading.Thread(target=p.loop, args=[-1, gotpacket, user_arg])
+    t.daemon = True
+    t.start()
+    while t.is_alive():  # wait for the thread to exit
+        t.join(.1)
