@@ -27,7 +27,7 @@ def main_loop(port, interface, ether_type):
 
     while True:
         data = sock.recv(UDP_BUFFER_SIZE)
-        print data
+        print repr(data)
 
         mac_str = netifaces.ifaddresses(interface.device)[netifaces.AF_LINK][0]['addr']
         src_mac = binascii.unhexlify(mac_str.replace(':', ''))
