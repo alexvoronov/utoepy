@@ -43,7 +43,7 @@ def all_interfaces():
 
 def interface_from_name(name):
     try:
-        return pcappy.open_live(name)
+        return pcappy.open_live(name, snaplen=65535)
     except pcappy.PcapPyException:
         msg = "Can't open interface %s (available interfaces: %s)." % (
             name, ", ".join(all_interfaces()))
