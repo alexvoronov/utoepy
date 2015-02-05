@@ -19,19 +19,22 @@ broadcast_mac = '\xff\xff\xff\xff\xff\xff'
 gn_ether_type = 0x8947
 
 
+def mac(device_name):
+    mac_str = netifaces.ifaddresses(device_name)[netifaces.AF_LINK][0]['addr']
+    return binascii.unhexlify(mac_str.replace(':', ''))
+
+
 def main_loop(port, interface, ether_type):
     ip = ''
     sock = socket.socket(socket.AF_INET,     # Internet
                          socket.SOCK_DGRAM)  # UDP
     sock.bind((ip, port))
 
+    src_mac = mac(interface.device)
+
     while True:
         data = sock.recv(UDP_BUFFER_SIZE)
         print repr(data)
-
-        mac_str = netifaces.ifaddresses(interface.device)[netifaces.AF_LINK][0]['addr']
-        src_mac = binascii.unhexlify(mac_str.replace(':', ''))
-
         frame = dpkt.ethernet.Ethernet(dst=broadcast_mac, src=src_mac,
                                        type=ether_type, data=data)
         interface.inject(frame.pack())

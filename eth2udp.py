@@ -5,11 +5,18 @@ import socket
 import dpkt
 import pcappy
 import threading
+import netifaces
+import binascii
 
 
 # Geonetworking: 0x8947, or 35143 in decimal.
 # See http://standards.ieee.org/develop/regauth/ethertype/eth.txt
 gn_ether_type = 0x8947
+
+
+def mac(device_name):
+    mac_str = netifaces.ifaddresses(device_name)[netifaces.AF_LINK][0]['addr']
+    return binascii.unhexlify(mac_str.replace(':', ''))
 
 
 def address_from_name(name):
@@ -38,9 +45,10 @@ def interface_from_name(name):
 def gotpacket(user_arg, hdr, data):
     """loop()'s callback"""
     eth_frame = dpkt.ethernet.Ethernet(data)
-    print repr(eth_frame.data)
-    sock = user_arg['sock']
-    sock.sendto(eth_frame.data, user_arg['address'])
+    if user_arg['keep_own_frames'] or eth_frame.src != user_arg['my_mac']:
+        print repr(eth_frame.data)
+        sock = user_arg['sock']
+        sock.sendto(eth_frame.data, user_arg['address'])
 
 
 if __name__ == "__main__":
@@ -48,6 +56,8 @@ if __name__ == "__main__":
     parser.add_argument('address',   type=address_from_name,   help='Remote IP:Port to send incoming payload (e.g. 127.0.0.1:4000)')
     parser.add_argument('interface', type=interface_from_name, help='Interface name, e.g. eth0')
     parser.add_argument('ethertype', type=int,                 help='Ethertype of the upper protocol. Default: %d (GeoNetworking)' % (gn_ether_type), nargs='?', default=gn_ether_type)
+    parser.add_argument('--keep-own-frames', action='store_true', help='Keep frames originating from the interface. Default: skip them')
+    parser.set_defaults(keep_own_frames=False)
     args = parser.parse_args()
 
     p = args.interface
@@ -56,7 +66,10 @@ if __name__ == "__main__":
                          socket.SOCK_DGRAM)  # UDP
 
     # Parameters to loop()'s callback. Can be any python object.
-    user_arg = {'sock': sock, 'address': args.address}
+    user_arg = {'sock': sock,
+                'address': args.address,
+                'keep_own_frames': args.keep_own_frames,
+                'my_mac': mac(p.device)}
 
     # Parameters are count, callback_function, user_params_to_callback_function
     # p.loop(-1, gotpacket, user_arg)  # Can't handle KeyboardInterrupt
