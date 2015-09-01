@@ -10,6 +10,9 @@ import binascii
 # Simple test:
 # echo "TEST" | socat - UDP4-DATAGRAM:127.0.0.1:4001
 
+# Simple test for raw:
+# echo ffffffffffff542696d082018947414141 | xxd -r -p | socat - UDP4-DATAGRAM:127.0.0.1:4001
+
 UDP_BUFFER_SIZE = 65535
 
 broadcast_mac = '\xff\xff\xff\xff\xff\xff'
@@ -24,20 +27,29 @@ def mac(device_name):
     return binascii.unhexlify(mac_str.replace(':', ''))
 
 
-def main_loop(port, interface, ether_type):
+def main_loop(port, interface, ether_type, mode):
     ip = ''
     sock = socket.socket(socket.AF_INET,     # Internet
                          socket.SOCK_DGRAM)  # UDP
     sock.bind((ip, port))
 
-    src_mac = mac(interface.device)
+    device_mac = mac(interface.device)
 
-    while True:
-        data = sock.recv(UDP_BUFFER_SIZE)
-        print repr(data)
-        frame = dpkt.ethernet.Ethernet(dst=broadcast_mac, src=src_mac,
-                                       type=ether_type, data=data)
-        interface.inject(frame.pack())
+    if mode == 'cooked':
+        while True:
+            data = sock.recv(UDP_BUFFER_SIZE)
+            print repr(data)
+            frame = dpkt.ethernet.Ethernet(dst=broadcast_mac, src=device_mac,
+                                           type=ether_type, data=data)
+            interface.inject(frame.pack())
+    elif mode == 'raw':
+        while True:
+            data = sock.recv(UDP_BUFFER_SIZE)
+            frame = dpkt.ethernet.Ethernet(data)
+            print repr(frame)
+            interface.inject(frame.pack())
+    else:
+        raise Exception('Unknown mode ' + str(mode))
 
 
 def all_interfaces():
@@ -55,9 +67,11 @@ def interface_from_name(name):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='udp2eth')
-    parser.add_argument('port',      type=int,                 help='Local UDP port to listen for incoming payload')
-    parser.add_argument('interface', type=interface_from_name, help='Interface name, e.g. eth0')
-    parser.add_argument('ethertype', type=int,                 help='Ethertype of the upper protocol (35143 for GeoNetworking)', nargs='?', default=gn_ether_type)
+    parser.add_argument('--mode',      required=True, nargs=1,   help='Cooked packet mode appends ethernet header consisting of broadcast destination, sender source, and ethertype. Raw packet mode assumes that UDP payload already has an Ethernet header.', choices=['raw', 'cooked'])
+    parser.add_argument('--port',      type=int,                 help='Local UDP port to listen for incoming payload')
+    parser.add_argument('--interface', type=interface_from_name, help='Interface name, e.g. eth0')
+    parser.add_argument('--ethertype', type=int,                 help='Ethertype of the upper protocol (35143 for GeoNetworking)', default=gn_ether_type)
     args = parser.parse_args()
 
-    main_loop(args.port, args.interface, args.ethertype)
+
+    main_loop(args.port, args.interface, args.ethertype, args.mode[0])

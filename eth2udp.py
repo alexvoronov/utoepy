@@ -9,6 +9,9 @@ import netifaces
 import binascii
 
 
+# Simple test:
+# socat -u udp-recv:4002 -
+
 # Geonetworking: 0x8947, or 35143 in decimal.
 # See http://standards.ieee.org/develop/regauth/ethertype/eth.txt
 gn_ether_type = 0x8947
@@ -42,21 +45,30 @@ def interface_from_name(name):
         raise argparse.ArgumentTypeError(msg)
 
 
-def gotpacket(user_arg, hdr, data):
+def gotpacket_raw(user_arg, hdr, data):
+    """loop()'s callback"""
+    eth_frame = dpkt.ethernet.Ethernet(data)
+    if user_arg['keep_own_frames'] or eth_frame.src != user_arg['my_mac']:
+        print repr(eth_frame)
+        sock = user_arg['sock']
+        sock.sendto(data, user_arg['address'])  # Send full frame.
+
+def gotpacket_cooked(user_arg, hdr, data):
     """loop()'s callback"""
     eth_frame = dpkt.ethernet.Ethernet(data)
     if user_arg['keep_own_frames'] or eth_frame.src != user_arg['my_mac']:
         print repr(eth_frame.data)
         sock = user_arg['sock']
-        sock.sendto(eth_frame.data, user_arg['address'])
+        sock.sendto(eth_frame.data, user_arg['address'])  # Send only data.
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='eth2udp')
-    parser.add_argument('address',   type=address_from_name,   help='Remote IP:Port to send incoming payload (e.g. 127.0.0.1:4000)')
-    parser.add_argument('interface', type=interface_from_name, help='Interface name, e.g. eth0')
-    parser.add_argument('ethertype', type=int,                 help='Ethertype of the upper protocol. Default: %d (GeoNetworking)' % (gn_ether_type), nargs='?', default=gn_ether_type)
-    parser.add_argument('--keep-own-frames', action='store_true', help='Keep frames originating from the interface. Default: skip them')
+    parser.add_argument('--address',   required=True, type=address_from_name,   help='Remote IP:Port to send incoming payload (e.g. 127.0.0.1:4000)')
+    parser.add_argument('--mode',      required=True, nargs=1,                  help='Cooked packet mode appends ethernet header consisting of broadcast destination, sender source, and ethertype. Raw packet mode assumes that UDP payload already has an Ethernet header.', choices=['raw', 'cooked'])
+    parser.add_argument('--interface', required=True, type=interface_from_name, help='Interface name, e.g. eth0')
+    parser.add_argument('--ethertype', type=int,                                help='Ethertype of the upper protocol. Default: 35143 (GeoNetworking)', default=gn_ether_type)
+    parser.add_argument('--keep-own-frames', action='store_true',               help='Keep frames originating from the interface. Default: skip them')
     parser.set_defaults(keep_own_frames=False)
     args = parser.parse_args()
 
@@ -75,7 +87,7 @@ if __name__ == "__main__":
     # p.loop(-1, gotpacket, user_arg)  # Can't handle KeyboardInterrupt
 
     # To handle KeyboardInterrupt (from http://stackoverflow.com/questions/14271697/ctrlc-doesnt-interrupt-call-to-shared-library-using-ctypes-in-python)
-    t = threading.Thread(target=p.loop, args=[-1, gotpacket, user_arg])
+    t = threading.Thread(target=p.loop, args=[-1, gotpacket_cooked if args.mode[0] == 'cooked' else gotpacket_raw, user_arg])
     t.daemon = True
     t.start()
     while t.is_alive():  # wait for the thread to exit
